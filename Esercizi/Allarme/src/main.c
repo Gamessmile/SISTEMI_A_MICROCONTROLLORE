@@ -14,9 +14,16 @@ enum{
     CONFIGURAZIONE,
 };
 
+/* VARIABILI GLOBALI */
 int stato = DISATTIVATO;
 char password[999] = "1234";
-int tempo_uscita = 50;
+int tempo_uscita = 50; // Variabile inerente al tempo di uscita nella fase di pre allarme
+int time = 0; // Valore utilizzato per la gestione dei tempi
+int try = 0; //tentativi della password
+int i=0;//Ultimo accesso alla stringa usata per prendere la password (preallarme, allarme), messo fuori per evitare venga resettata a 0 ove non serve
+int invio = 0; // Utilizzata come variabile booleana per verificare o meno che la password scritta sia inviata (preallarme, allarme), e quindi confrontarla
+char c[999];
+
 
 void setup(){
 
@@ -99,9 +106,6 @@ int password_verify(){
     return 0;
 }
 
-
-
-
 void EXTI15_10_IRQHandler(void){
     // X
     if(EXTI_isset(EXTI10)){
@@ -135,12 +139,6 @@ void EXTI9_5_IRQHandler(void){
     }
 }
 
-int time = 0;
-int try = 0; //tentativi
-int i=0;//Ultimo accesso alla stringa usata per prendere la password (preallarme), messo fuori per evitare venga resettata a 0 ove non serve
-int invio = 0; // Utilizzata come variabile booleana per verificare o meno che la password scritta sia inviata (preallarme), e quindi confrontarla
-char c[999];
-
 void TIM2_IRQHandler(void){
     if(TIM_update_check(TIM2)){
         
@@ -157,9 +155,7 @@ void TIM2_IRQHandler(void){
                     fflush(stdout);
                     stato = CONFIGURAZIONE;
                 }
-            }
-
-           
+            }           
             break;
   
         case CONFIGURAZIONE:
@@ -169,6 +165,7 @@ void TIM2_IRQHandler(void){
                     "• impostazione del “tempo di uscita”, comando OUT-TIME <valore_in_ms>\n"
                     "• impostazione del “tempo di ingresso”, comando IN-TIME <valore_in_ms>\n"
                     "• uscita dal “setup”, comando EXIT\n\n");
+
             fflush(stdout);
             getstring(p,998);
             char * token = strtok(p, " ");
@@ -190,7 +187,6 @@ void TIM2_IRQHandler(void){
                 stato = DISATTIVATO;
             }
             memset(&p,0,strlen(p));
-
             break;
   
         case ATTIVAZIONE:
@@ -212,14 +208,12 @@ void TIM2_IRQHandler(void){
                 time = 0;
                 stato = ATTIVATO;
             }
-            
-            
             break;
+
         case ATTIVATO:
             GPIO_write(GPIOB,0,1);
-            
-            
             break;
+
         case DISATTIVAZIONE:
             GPIO_write(GPIOB,0,0);
             
@@ -232,8 +226,8 @@ void TIM2_IRQHandler(void){
             if(try==3){
                 stato = ALLARME;
             }
-
             break;
+        
         case PRE_ALLARME:
             time++;
             GPIO_write(GPIOB,0,0);
@@ -241,8 +235,7 @@ void TIM2_IRQHandler(void){
             char remaining_time[5];
             sprintf(remaining_time, "%4d", (20-(time/10)));
             DISPLAY_puts(0, remaining_time);
-            
-            
+                
             if(kbhit()){ // Gestione della getstring non bloccante
                 char h = readchar();
                 if(h==13){
@@ -309,11 +302,10 @@ void TIM2_IRQHandler(void){
                 time = 0;
                 
                 stato = ALLARME;
-            }
-            
+            }  
             break;
+        
         case ALLARME:
-
             time++;    
             if((time % 2)==0){ //Si attiva ogni 200 ms
                 GPIO_toggle(GPIOB,0);
