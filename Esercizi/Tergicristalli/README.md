@@ -1,0 +1,1 @@
+![Esercizio_Tergicristalli](Tergicristalli.png)
